@@ -1,0 +1,73 @@
+name: 'artifactbundle-builder'
+description: 'generate artifactbundle binaries'
+inputs:
+  swift-version:
+    description: 'swift version'
+    required: true
+  depth:
+    description: 'find executable targets'
+    default: 0
+runs:
+  using: 'composite'
+  steps:
+    - uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: ${{ inputs.swift-version }}
+    - name: Get swift version
+      shell: bash
+      run: swift --version
+    - uses: actions/cache@v3
+      with:
+        path: .build
+        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles('Package.swift') }}
+        restore-keys: |
+          swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-
+          swiftpm-${{ runner.os }}-
+    - name: Build bin
+      shell: bash
+      run: |
+        swift build -c release
+
+        # currently limitation depth == 1
+        if [ "${{ inputs.depth }}" != "0" ]; then
+          NAMES=$(swift package show-dependencies --format json | jq -r '.dependencies[].name')
+          for NAME in $NAMES; do
+            DIR=.build/checkouts/$NAME
+            PRODUCTS=$(swift package --package-path $DIR dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
+            for PRODUCT in $PRODUCTS; do
+              swift build -c release --product $PRODUCT
+            done
+          done
+        fi
+    - name: Collect bins
+      shell: bash
+      run: |
+        _TRIPLE=$(swift -print-target-info | jq -r '.target.moduleTriple')
+        OUTPUT_PATH=output/${{ inputs.swift-version }}/$_TRIPLE
+        mkdir -p $OUTPUT_PATH/bin
+        find $(swift build --show-bin-path -c release) -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
+
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          TRIPLES="[ \"x86_64-apple-macosx\", \"arm64-apple-macosx\" ]"
+        else
+          TRIPLES="[ \"$_TRIPLE\" ]"
+        fi
+
+        for BIN in `ls $OUTPUT_PATH/bin`; do
+          JSON=$(cat << EOS
+        {
+          "path": "$_TRIPLE/bin/$BIN",
+          "supportedTriples": $TRIPLES
+        }
+        EOS
+        )
+          echo $JSON > $OUTPUT_PATH/$BIN.json
+        done
+
+        # archive
+        tar -cvzf output.tar.gz $OUTPUT_PATH
+    - uses: actions/upload-artifact@v3
+      with:
+        name: artifact-${{ inputs.swift-version }}-${{ runner.os }}.tar.gz
+        path: output.tar.gz
+        retention-days: 1
