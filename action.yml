@@ -26,7 +26,13 @@ runs:
     - name: Build bin
       shell: bash
       run: |
-        swift build -c release
+        if [ "${{ runner.os }}" = "macOS" ]; then
+          BUILD_OPTS="-c release --arch x86_64 --arch arm64"
+        else
+          BUILD_OPTS="-c release"
+        fi
+
+        swift build $BUILD_OPTS
 
         # currently limitation depth == 1
         if [ "${{ inputs.depth }}" != "0" ]; then
@@ -35,7 +41,7 @@ runs:
             DIR=.build/checkouts/$NAME
             PRODUCTS=$(swift package --package-path $DIR dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
             for PRODUCT in $PRODUCTS; do
-              swift build -c release --product $PRODUCT
+              swift build $BUILD_OPTS --product $PRODUCT
             done
           done
         fi
@@ -43,15 +49,17 @@ runs:
       shell: bash
       run: |
         _TRIPLE=$(swift -print-target-info | jq -r '.target.moduleTriple')
-        OUTPUT_PATH=output/${{ inputs.swift-version }}/$_TRIPLE
-        mkdir -p $OUTPUT_PATH/bin
-        find $(swift build --show-bin-path -c release) -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
-
         if [ "${{ runner.os }}" = "macOS" ]; then
+          BUILD_OPTS="-c release --arch x86_64 --arch arm64"
           TRIPLES="[ \"x86_64-apple-macosx\", \"arm64-apple-macosx\" ]"
         else
+          BUILD_OPTS="-c release"
           TRIPLES="[ \"$_TRIPLE\" ]"
         fi
+
+        OUTPUT_PATH=output/${{ inputs.swift-version }}/$_TRIPLE
+        mkdir -p $OUTPUT_PATH/bin
+        find $(swift build $BUILD_OPTS --show-bin-path) -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
 
         for BIN in `ls $OUTPUT_PATH/bin`; do
           JSON=$(cat << EOS
