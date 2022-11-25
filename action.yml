@@ -57,9 +57,13 @@ runs:
           TRIPLES="[ \"$_TRIPLE\" ]"
         fi
 
+        BUILD_DIR=$(swift build $BUILD_OPTS --show-bin-path)
         OUTPUT_PATH=output/${{ inputs.swift-version }}/$_TRIPLE
+
         mkdir -p $OUTPUT_PATH/bin
-        find $(swift build $BUILD_OPTS --show-bin-path) -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
+
+        find $BUILD_DIR -maxdepth 1 -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
+        find $BUILD_DIR -maxdepth 1 -name "*.bundle" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
 
         for BIN in `ls $OUTPUT_PATH/bin`; do
           JSON=$(cat << EOS
