@@ -65,6 +65,9 @@ runs:
         find $BUILD_DIR -maxdepth 1 -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
         find $BUILD_DIR -maxdepth 1 -name "*.bundle" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
 
+        # exclude test bundles
+        rm -rf $OUTPUT_PATH/bin/*Tests.bundle
+
         for BIN in `ls $OUTPUT_PATH/bin`; do
           JSON=$(cat << EOS
         {
