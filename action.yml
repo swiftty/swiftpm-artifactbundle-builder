@@ -52,9 +52,13 @@ runs:
         if [ "${{ runner.os }}" = "macOS" ]; then
           BUILD_OPTS="-c release --arch x86_64 --arch arm64"
           TRIPLES="[ \"x86_64-apple-macosx\", \"arm64-apple-macosx\" ]"
+
+          BUNDLE_EXT="bundle"
         else
           BUILD_OPTS="-c release"
           TRIPLES="[ \"$_TRIPLE\" ]"
+
+          BUNDLE_EXT="resources"
         fi
 
         BUILD_DIR=$(swift build $BUILD_OPTS --show-bin-path)
@@ -63,10 +67,10 @@ runs:
         mkdir -p $OUTPUT_PATH/bin
 
         find $BUILD_DIR -maxdepth 1 -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
-        find $BUILD_DIR -maxdepth 1 -name "*.bundle" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
+        find $BUILD_DIR -maxdepth 1 -name "*.$BUNDLE_EXT" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
 
         # exclude test bundles
-        rm -rf $OUTPUT_PATH/bin/*Tests.bundle
+        rm -rf $OUTPUT_PATH/bin/*Tests.$BUNDLE_EXT
 
         for BIN in `ls $OUTPUT_PATH/bin`; do
           JSON=$(cat << EOS
