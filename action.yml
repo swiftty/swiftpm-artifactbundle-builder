@@ -66,11 +66,8 @@ runs:
 
         mkdir -p $OUTPUT_PATH/bin
 
+        # copy executable
         find $BUILD_DIR -maxdepth 1 -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
-        find $BUILD_DIR -maxdepth 1 -name "*.$BUNDLE_EXT" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
-
-        # exclude test bundles
-        rm -rf $OUTPUT_PATH/bin/*Tests.$BUNDLE_EXT
 
         for BIN in `ls $OUTPUT_PATH/bin`; do
           JSON=$(cat << EOS
@@ -82,6 +79,12 @@ runs:
         )
           echo $JSON > $OUTPUT_PATH/$BIN.json
         done
+
+        # add bundle
+        find $BUILD_DIR -maxdepth 1 -name "*.$BUNDLE_EXT" -print | xargs -I '{}' mv {} $OUTPUT_PATH/bin
+
+        # exclude test bundles
+        rm -rf $OUTPUT_PATH/bin/*Tests.$BUNDLE_EXT
 
         # archive
         tar -cvzf output.tar.gz $OUTPUT_PATH
