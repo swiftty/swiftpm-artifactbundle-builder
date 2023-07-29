@@ -37,7 +37,10 @@ runs:
           BUILD_OPTS="-c release"
         fi
 
-        swift build $BUILD_OPTS
+        ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
+        for PRODUCT in $ROOT_PRODUCTS; do
+          swift build $BUILD_OPTS --product $PRODUCT
+        done
 
         # currently limitation depth == 1
         if [ "${{ inputs.depth }}" != "0" ]; then
