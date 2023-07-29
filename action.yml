@@ -10,6 +10,9 @@ inputs:
   path:
     description: 'custom working directory'
     default: '.'
+  configuration:
+    description: 'swift build configuration'
+    default: 'release'
 runs:
   using: 'composite'
   steps:
@@ -32,9 +35,9 @@ runs:
         cd ${{ inputs.path }}
 
         if [ "${{ runner.os }}" = "macOS" ]; then
-          BUILD_OPTS="-c release --arch x86_64 --arch arm64"
+          BUILD_OPTS="-c ${{ inputs.configuration }} --arch x86_64 --arch arm64"
         else
-          BUILD_OPTS="-c release"
+          BUILD_OPTS="-c ${{ inputs.configuration }}"
         fi
 
         ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
