@@ -6,7 +6,10 @@ inputs:
     required: true
   depth:
     description: 'find executable targets'
-    default: 0
+    default: '0'
+  path:
+    description: 'custom working directory'
+    default: '.'
 runs:
   using: 'composite'
   steps:
@@ -26,6 +29,8 @@ runs:
     - name: Build bin
       shell: bash
       run: |
+        cd ${{ inputs.path }}
+
         if [ "${{ runner.os }}" = "macOS" ]; then
           BUILD_OPTS="-c release --arch x86_64 --arch arm64"
         else
@@ -48,6 +53,8 @@ runs:
     - name: Collect bins
       shell: bash
       run: |
+        cd ${{ inputs.path }}
+
         _TRIPLE=$(swift -print-target-info | jq -r '.target.moduleTriple')
         if [ "${{ runner.os }}" = "macOS" ]; then
           BUILD_OPTS="-c release --arch x86_64 --arch arm64"
@@ -91,5 +98,5 @@ runs:
     - uses: actions/upload-artifact@v3
       with:
         name: artifact-${{ inputs.swift-version }}-${{ runner.os }}.tar.gz
-        path: output.tar.gz
+        path: ${{ inputs.path }}/output.tar.gz
         retention-days: 1
