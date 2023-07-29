@@ -13,6 +13,9 @@ inputs:
   configuration:
     description: 'swift build configuration'
     default: 'release'
+  macos-archs:
+    description: 'archs list. e.g.) x86_64 arm64'
+    default: 'x86_64 arm64'
 runs:
   using: 'composite'
   steps:
@@ -25,7 +28,7 @@ runs:
     - uses: actions/cache@v3
       with:
         path: .build
-        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles('Package.swift') }}
+        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles('${{ inputs.path }}/Package.swift') }}
         restore-keys: |
           swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-
           swiftpm-${{ runner.os }}-
@@ -34,10 +37,10 @@ runs:
       run: |
         cd ${{ inputs.path }}
 
+        BUILD_OPTS="-c ${{ inputs.configuration }}"
         if [ "${{ runner.os }}" = "macOS" ]; then
-          BUILD_OPTS="-c ${{ inputs.configuration }} --arch x86_64 --arch arm64"
-        else
-          BUILD_OPTS="-c ${{ inputs.configuration }}"
+          ARCHS=$(echo "${{ inputs.macos-archs }}" | jq -Rnc 'inputs | split(" ") | map("--arch " + .)' | jq -rc 'join(" ")')
+          BUILD_OPTS="$BUILD_OPTS $ARCHS"
         fi
 
         ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
@@ -61,14 +64,16 @@ runs:
       run: |
         cd ${{ inputs.path }}
 
+        BUILD_OPTS="-c ${{ inputs.configuration }}"
         _TRIPLE=$(swift -print-target-info | jq -r '.target.moduleTriple')
         if [ "${{ runner.os }}" = "macOS" ]; then
-          BUILD_OPTS="-c release --arch x86_64 --arch arm64"
-          TRIPLES="[ \"x86_64-apple-macosx\", \"arm64-apple-macosx\" ]"
+          ARCHS=$(echo "${{ inputs.macos-archs }}" | jq -Rnc 'inputs | split(" ") | map("--arch " + .)' | jq -rc 'join(" ")')
+          BUILD_OPTS="$BUILD_OPTS $ARCHS"
+
+          TRIPLES=$(echo "${{ inputs.macos-archs }}" | jq -Rnc 'inputs | split(" ") | map(. + "-apple-macosx")')
 
           BUNDLE_EXT="bundle"
         else
-          BUILD_OPTS="-c release"
           TRIPLES="[ \"$_TRIPLE\" ]"
 
           BUNDLE_EXT="resources"
