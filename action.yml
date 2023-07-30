@@ -22,7 +22,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - if: ${{ inputs.skip-swift-setup }} != 'true'
+    - if: ${{ inputs.skip-swift-setup != 'true' }}
       uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ inputs.swift-version }}
