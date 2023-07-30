@@ -13,13 +13,17 @@ inputs:
   configuration:
     description: 'swift build configuration'
     default: 'release'
+  skip-swift-setup:
+    description: 'use runs-on default swift environment'
+    default: 'false'
   macos-archs:
     description: 'archs list. e.g.) x86_64 arm64'
     default: 'x86_64 arm64'
 runs:
   using: 'composite'
   steps:
-    - uses: swift-actions/setup-swift@v1
+    - if: ${{ inputs.skip-swift-setup }} != 'true'
+      uses: swift-actions/setup-swift@v1
       with:
         swift-version: ${{ inputs.swift-version }}
     - name: Get swift version
@@ -28,7 +32,7 @@ runs:
     - uses: actions/cache@v3
       with:
         path: .build
-        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles('${{ inputs.path }}/Package.swift') }}
+        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles(format('{0}/Package.swift', inputs.path)) }}
         restore-keys: |
           swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-
           swiftpm-${{ runner.os }}-
