@@ -1,9 +1,6 @@
 name: 'artifactbundle-builder'
 description: 'generate artifactbundle binaries'
 inputs:
-  swift-version:
-    description: 'swift version'
-    required: true
   depth:
     description: 'find executable targets'
     default: '0'
@@ -13,28 +10,32 @@ inputs:
   configuration:
     description: 'swift build configuration'
     default: 'release'
-  skip-swift-setup:
-    description: 'use runs-on default swift environment'
-    default: 'false'
   macos-archs:
     description: 'archs list. e.g.) x86_64 arm64'
     default: 'x86_64 arm64'
 runs:
   using: 'composite'
   steps:
-    - if: ${{ inputs.skip-swift-setup != 'true' }}
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: ${{ inputs.swift-version }}
     - name: Get swift version
+      id: get-version
       shell: bash
-      run: swift --version
+      run: |
+        input=$(swift --version)
+
+        regex="Swift version ([0-9]+\.[0-9]+(\.[0-9]+)?)"
+        if [[ $input =~ $regex ]]; then
+          version="${BASH_REMATCH[1]}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+        else
+          echo "missing swift version."
+          exit 1
+        fi
     - uses: actions/cache@v3
       with:
         path: .build
-        key: swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-${{ hashFiles(format('{0}/Package.swift', inputs.path)) }}
+        key: swiftpm-${{ runner.os }}-${{ steps.get-version.outputs.version }}-${{ hashFiles(format('{0}/Package.swift', inputs.path)) }}
         restore-keys: |
-          swiftpm-${{ runner.os }}-${{ inputs.swift-version }}-
+          swiftpm-${{ runner.os }}-${{ steps.get-version.outputs.version }}-
           swiftpm-${{ runner.os }}-
     - name: Build bin
       shell: bash
@@ -84,7 +85,7 @@ runs:
         fi
 
         BUILD_DIR=$(swift build $BUILD_OPTS --show-bin-path)
-        OUTPUT_PATH=output/${{ inputs.swift-version }}/$_TRIPLE
+        OUTPUT_PATH=output/${{ steps.get-version.outputs.version }}/$_TRIPLE
 
         mkdir -p $OUTPUT_PATH/bin
 
@@ -112,6 +113,6 @@ runs:
         tar -cvzf output.tar.gz $OUTPUT_PATH
     - uses: actions/upload-artifact@v3
       with:
-        name: artifact-${{ inputs.swift-version }}-${{ runner.os }}.tar.gz
+        name: artifact-${{ steps.get-version.outputs.version }}-${{ runner.os }}.tar.gz
         path: ${{ inputs.path }}/output.tar.gz
         retention-days: 1
