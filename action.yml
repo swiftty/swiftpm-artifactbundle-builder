@@ -16,6 +16,9 @@ inputs:
   macos-archs:
     description: 'archs list. e.g.) x86_64 arm64'
     default: 'x86_64 arm64'
+  copy-resources:
+    description: 'custom copy resources action. e.g.) LICENCE README.md'
+    default: ''
 
 runs:
   using: 'composite'
@@ -109,6 +112,13 @@ runs:
 
         # exclude test bundles
         rm -rf $OUTPUT_PATH/bin/*Tests.$BUNDLE_EXT
+
+        # copy extra resources
+        for file in "${{ copy-resources }}"; do
+          if [[ -n "$file" ]]; then
+            cp -r $file $OUTPUT_PATH/bin/
+          fi
+        done
 
         # archive
         tar -cvzf output.tar.gz $OUTPUT_PATH
