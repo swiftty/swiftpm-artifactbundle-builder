@@ -114,7 +114,7 @@ runs:
         rm -rf $OUTPUT_PATH/bin/*Tests.$BUNDLE_EXT
 
         # copy extra resources
-        for file in "${{ copy-resources }}"; do
+        for file in "${{ inputs.copy-resources }}"; do
           if [[ -n "$file" ]]; then
             cp -r $file $OUTPUT_PATH/bin/
           fi
