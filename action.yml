@@ -122,7 +122,7 @@ runs:
 
         # archive
         tar -cvzf output.tar.gz $OUTPUT_PATH
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: artifact-${{ steps.get-version.outputs.version }}-${{ runner.os }}.tar.gz
         path: ${{ inputs.path }}/output.tar.gz
