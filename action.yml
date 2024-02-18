@@ -19,6 +19,9 @@ inputs:
   copy-resources:
     description: 'custom copy resources action. e.g.) LICENCE README.md'
     default: ''
+  use-xcode:
+    description: 'use xcodebuild instead of swift build'
+    default: ''
 
 runs:
   using: 'composite'
@@ -50,29 +53,43 @@ runs:
       run: |
         cd ${{ inputs.path }}
 
-        BUILD_OPTS="${{ inputs.build-options }} -c ${{ inputs.configuration }}"
-        if [ "${{ runner.os }}" = "macOS" ]; then
-          ARCHS=$(echo "${{ inputs.macos-archs }}" | jq -Rnc 'inputs | split(" ") | map("--arch " + .)' | jq -rc 'join(" ")')
-          BUILD_OPTS="$BUILD_OPTS $ARCHS"
-        fi
+        if [ "${{ inputs.use-xcode }}" != "" ]; then
+          BUILD_DIR=.build/xcodebuild
+          BUILD_OPTS="${{ inputs.build-options }} -configuration ${{ inputs.configuration }}"
 
-        echo "builddir=$(swift build $BUILD_OPTS --show-bin-path)" >> "$GITHUB_OUTPUT"
+          mkdir -p $BUILD_DIR
+          echo "builddir=$BUILD_DIR" >> "$GITHUB_OUTPUT"
 
-        ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
-        for PRODUCT in $ROOT_PRODUCTS; do
-          swift build $BUILD_OPTS --product $PRODUCT
-        done
-
-        # currently limitation depth == 1
-        if [ "${{ inputs.depth }}" != "0" ]; then
-          NAMES=$(swift package show-dependencies --format json | jq -r '.dependencies[].name')
-          for NAME in $NAMES; do
-            DIR=.build/checkouts/$NAME
-            PRODUCTS=$(swift package --package-path $DIR dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
-            for PRODUCT in $PRODUCTS; do
-              swift build $BUILD_OPTS --product $PRODUCT
-            done
+          ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
+          for PRODUCT in $ROOT_PRODUCTS; do
+            xcodebuild archive -scheme $PRODUCT $BUILD_OPTS -destination generic/platform=macOS -archivePath $PRODUCT.xcarchive
+            find $PRODUCT.xcarchive/Products/ -type f -exec test -x {} \; -print | xargs -I '{}' mv {} $BUILD_DIR
           done
+        else
+          BUILD_OPTS="${{ inputs.build-options }} -c ${{ inputs.configuration }}"
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            ARCHS=$(echo "${{ inputs.macos-archs }}" | jq -Rnc 'inputs | split(" ") | map("--arch " + .)' | jq -rc 'join(" ")')
+            BUILD_OPTS="$BUILD_OPTS $ARCHS"
+          fi
+
+          echo "builddir=$(swift build $BUILD_OPTS --show-bin-path)" >> "$GITHUB_OUTPUT"
+
+          ROOT_PRODUCTS=$(swift package dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
+          for PRODUCT in $ROOT_PRODUCTS; do
+            swift build $BUILD_OPTS --product $PRODUCT
+          done
+
+          # currently limitation depth == 1
+          if [ "${{ inputs.depth }}" != "0" ]; then
+            NAMES=$(swift package show-dependencies --format json | jq -r '.dependencies[].name')
+            for NAME in $NAMES; do
+              DIR=.build/checkouts/$NAME
+              PRODUCTS=$(swift package --package-path $DIR dump-package | jq -r '.products[] | select(.type | has("executable")) | .name')
+              for PRODUCT in $PRODUCTS; do
+                swift build $BUILD_OPTS --product $PRODUCT
+              done
+            done
+          fi
         fi
     - name: Collect bins
       shell: bash
