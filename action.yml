@@ -53,7 +53,7 @@ runs:
       run: |
         cd ${{ inputs.path }}
 
-        if [ "${{ inputs.use-xcode }}" != "" ]; then
+        if [ "${{ inputs.use-xcode }}" == "true" ]; then
           BUILD_DIR=.build/xcodebuild
           BUILD_OPTS="${{ inputs.build-options }} -configuration ${{ inputs.configuration }}"
 
