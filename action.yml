@@ -106,7 +106,7 @@ runs:
         fi
 
         BUILD_DIR="${{ steps.build.outputs.builddir }}"
-        OUTPUT_PATH=output/${{ steps.get-version.outputs.version }}/$_TRIPLE
+        OUTPUT_PATH=output/$_TRIPLE
 
         mkdir -p $OUTPUT_PATH/bin
 
@@ -141,6 +141,6 @@ runs:
         tar -cvzf output.tar.gz $OUTPUT_PATH
     - uses: actions/upload-artifact@v4
       with:
-        name: artifact-${{ steps.get-version.outputs.version }}-${{ runner.os }}.tar.gz
+        name: artifact-${{ runner.os }}.tar.gz
         path: ${{ inputs.path }}/output.tar.gz
         retention-days: 1
